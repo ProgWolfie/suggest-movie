@@ -2,6 +2,13 @@
 
 session_start();
 
+if (!isset($_SESSION['user_id'])) {
+    header("Location: logout.php");
+    exit;
+} else {
+    $user_id = $_SESSION['user_id'];
+}
+
 $servername = "localhost";
 $username = "root";
 $password = "";
@@ -16,37 +23,98 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = 10;
 $offset = ($page - 1) * $limit;
 
-$total_sql = "SELECT COUNT(*) AS total FROM movies";
-$total_result = $conn->query($total_sql);
-$total_row = $total_result->fetch_assoc();
-$total_records = $total_row['total'];
-$total_pages = ceil($total_records / $limit);
-
-$sql = "SELECT id, title, type, picture FROM movies LIMIT $limit OFFSET $offset";
-$result = $conn->query($sql);
-
+$liked_movie_ids = [];
 $movies = [];
-if ($result->num_rows > 0) {
-    while($row = $result->fetch_assoc()) {
-        $movies[] = [
-            'id' => $row['id'],
-            'title' => $row['title'],
-            'type' => $row['type'],
-            'picture' => $row['picture']
-        ];
+
+$likes_sql = "SELECT movie_id FROM user_likes WHERE user_id = $user_id";
+$likes_result = $conn->query($likes_sql);
+if ($likes_result->num_rows > 0) {
+    while($like_row = $likes_result->fetch_assoc()) {
+        $liked_movie_ids[] = $like_row['movie_id'];
     }
 }
 
-$liked_movie_ids = [];
-if (isset($_SESSION['user_id'])) {
-    $user_id = $_SESSION['user_id'];
-    $likes_sql = "SELECT movie_id FROM user_likes WHERE user_id = $user_id";
-    $likes_result = $conn->query($likes_sql);
-    if ($likes_result->num_rows > 0) {
-        while($like_row = $likes_result->fetch_assoc()) {
-            $liked_movie_ids[] = $like_row['movie_id'];
+if (!empty($liked_movie_ids)) {
+    $liked_ids_str = implode(',', $liked_movie_ids);
+
+    $similar_users_sql = "
+        SELECT user_id, movie_id 
+        FROM user_likes 
+        WHERE movie_id IN ($liked_ids_str) AND user_id != $user_id
+    ";
+
+    $similar_users_result = $conn->query($similar_users_sql);
+    $user_match_counts = [];
+    $user_total_likes = [];
+
+    if ($similar_users_result->num_rows > 0) {
+        while ($row = $similar_users_result->fetch_assoc()) {
+            $uid = $row['user_id'];
+            $mid = $row['movie_id'];
+
+            if (!isset($user_match_counts[$uid])) $user_match_counts[$uid] = 0;
+            $user_match_counts[$uid]++;
+
+            if (!isset($user_total_likes[$uid])) $user_total_likes[$uid] = [];
+            $user_total_likes[$uid][] = $mid;
         }
     }
+
+    $recommended_ids = [];
+
+    foreach ($user_match_counts as $other_user_id => $common_likes) {
+        $total_likes_sql = "SELECT COUNT(*) as total FROM user_likes WHERE user_id = $other_user_id";
+        $total_likes_result = $conn->query($total_likes_sql);
+        $total_row = $total_likes_result->fetch_assoc();
+        $total_likes = $total_row['total'];
+
+        $similarity = $common_likes / $total_likes;
+
+        if ($similarity >= 0.3) {
+            $suggest_sql = "
+                SELECT movie_id FROM user_likes 
+                WHERE user_id = $other_user_id AND movie_id NOT IN ($liked_ids_str)
+            ";
+            $suggest_result = $conn->query($suggest_sql);
+            if ($suggest_result->num_rows > 0) {
+                while ($suggest_row = $suggest_result->fetch_assoc()) {
+                    $recommended_ids[] = $suggest_row['movie_id'];
+                }
+            }
+        }
+    }
+
+    $recommended_ids = array_unique($recommended_ids);
+
+    if (!empty($recommended_ids)) {
+        $recommended_ids_str = implode(',', $recommended_ids);
+
+        $total_sql = "SELECT COUNT(*) AS total FROM movies WHERE id IN ($recommended_ids_str)";
+        $total_result = $conn->query($total_sql);
+        $total_row = $total_result->fetch_assoc();
+        $total_records = $total_row['total'];
+        $total_pages = ceil($total_records / $limit);
+
+        $sql = "SELECT id, title, type, picture FROM movies WHERE id IN ($recommended_ids_str) LIMIT $limit OFFSET $offset";
+        $result = $conn->query($sql);
+
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $movies[] = [
+                    'id' => $row['id'],
+                    'title' => $row['title'],
+                    'type' => $row['type'],
+                    'picture' => $row['picture']
+                ];
+            }
+        }
+    } else {
+        $total_records = 0;
+        $total_pages = 0;
+    }
+} else {
+    $total_records = 0;
+    $total_pages = 0;
 }
 
 $conn->close();
@@ -220,26 +288,26 @@ $conn->close();
                 <?php
                 if (!isset($_SESSION['user_id'])) {
 
-                ?>
+                    ?>
 
-                <a class="flex items-center gap-2.5 text-gray-300 font-Dana tracking-tighter text-xl" href="login.php"><svg
-                        class="size-8">
-                        <use xlink:href="#exit-svg"></use>
-                    </svg> ورود | ثبت نام
-                </a>
+                    <a class="flex items-center gap-2.5 text-gray-300 font-Dana tracking-tighter text-xl" href="login.php"><svg
+                            class="size-8">
+                            <use xlink:href="#exit-svg"></use>
+                        </svg> ورود | ثبت نام
+                    </a>
 
-                <?php
+                    <?php
                 } else {
 
-                ?>
+                    ?>
 
                     <a class="flex items-center gap-2.5 text-gray-300 font-Dana tracking-tighter text-xl" href="logout.php"><svg
-                                class="size-8">
+                            class="size-8">
                             <use xlink:href="#exit-svg"></use>
                         </svg>خروج
                     </a>
 
-                <?php
+                    <?php
 
                 }
 
