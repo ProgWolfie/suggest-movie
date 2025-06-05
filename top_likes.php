@@ -83,7 +83,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coffeshop</title>
+    <title>Suggest Movie</title>
     <link rel="stylesheet" href="public/index.css">
     <link rel="icon" href="public/fav-icon.png" type="image/png">
     <style>
@@ -220,9 +220,9 @@ $conn->close();
 
 </svg>
 <header>
-    <div class="w-[90%] rounded-3xl h-24 bg-black/50 backdrop-blur-md mx-auto fixed top-10 right-0 left-0 md:flex justify-between items-center">
-        <div class="flex items-center gap-6 font-MorabbaMedium text-emerald-700 text-2xl/4 tracking-tight "><a><img src="public/categories/category1.png"></a>
-            <a href="suggestion_movie.php">پیشنهادات</a>
+    <div class="w-[90%] rounded-3xl h-24 bg-black/50 backdrop-blur-md mx-auto top-10 right-0 left-0 md:flex justify-between items-center" style="margin-top: 50px">
+        <div class="flex items-center gap-6 font-MorabbaMedium text-emerald-700 text-2xl/4 tracking-tight ">
+            <a href="suggestion_movie.php" style="padding-right: 30px">پیشنهادات</a>
             <a href="index.php">خانه</a>
             <a href="top_likes.php">عنواین برتر</a>
             <a href="profile_like.php">لایک شده ها</a>
@@ -270,9 +270,8 @@ $conn->close();
             </div>
         </div>
     </div>
-    <div class="w-full h-96"></div>
 </header>
-<main class="w-full mx-auto flex flex-col items-center">
+<main class="w-full mx-auto flex flex-col items-center" style="margin-top: 75px;">
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
 
         <?php foreach ($movies as $movie): ?>
